@@ -7,7 +7,7 @@ const port = process.env.PORT || 3000;
 const SECRET_KEY = process.env.SECRET_KEY;
 
 app.get('/data', async (req, res) => {
-  const xDate = new Date().toUTCString();
+  const xDate = Math.floor(Date.now() / 1000).toString(); // ✔️ Unix timestamp (in seconds)
   const signature = crypto.createHmac('sha256', SECRET_KEY).update(xDate).digest('hex');
 
   console.log("Sending headers:", {
