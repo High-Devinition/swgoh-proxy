@@ -1,6 +1,8 @@
 const express = require('express');
 const crypto = require('crypto');
-const fetch = require('node-fetch');
+const axios = require('axios');
+const http = require('http');
+const https = require('https');
 
 const app = express();
 const port = process.env.PORT || 3000;
@@ -17,33 +19,30 @@ app.get('/data', async (req, res) => {
     .createHmac('sha256', SECRET_KEY)
     .update(xDate)
     .digest('hex');
-  const authHeader = `hmac ${signature}`;
 
-  const headers = new fetch.Headers({
+  const headers = {
     'x-date': xDate,
-    'Authorization': authHeader,
+    'Authorization': `hmac ${signature}`,
     'Accept': 'application/json',
     'User-Agent': 'swgoh-proxy-bot'
-  });
+  };
 
-  console.log("🧠 Outgoing headers:", {
-    'x-date': xDate,
-    'Authorization': authHeader
-  });
+  console.log("🧠 Outgoing headers:", headers);
 
   try {
-    const response = await fetch('https://swgoh-comlink-0zch.onrender.com/data', {
-      method: 'GET',
-      headers
+    const response = await axios.get('https://swgoh-comlink-0zch.onrender.com/data', {
+      headers,
+      httpAgent: new http.Agent({ keepAlive: true }),
+      httpsAgent: new https.Agent({ keepAlive: true }),
+      transformRequest: [(data, headers) => {
+        // Manually preserve casing
+        headers['x-date'] = xDate;
+        headers['Authorization'] = `hmac ${signature}`;
+        return data;
+      }]
     });
 
-    const data = await response.json();
-
-    if (!response.ok) {
-      throw { response: { status: response.status, data } };
-    }
-
-    res.status(response.status).json(data);
+    res.status(response.status).json(response.data);
   } catch (error) {
     console.error("❌ Proxy request failed:");
     console.error("Status:", error.response?.status);
@@ -58,5 +57,5 @@ app.get('/data', async (req, res) => {
 });
 
 app.listen(port, () => {
-  console.log(`✅ Proxy using preserved header casing is running on port ${port}`);
+  console.log(`✅ Proxy with exact header casing is running on port ${port}`);
 });
