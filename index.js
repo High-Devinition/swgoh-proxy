@@ -21,8 +21,9 @@ app.get('/data', async (req, res) => {
     .update(xDate)
     .digest('hex');
 
-  // Format exactly: 'hmac <digest>:<timestamp>'
-  const authHeader = `hmac ${digest}:${xDate}`;
+  // Format exactly: 'HMAC <digest>:<timestamp>'
+  const authHeader = `HMAC ${digest}:${xDate}`;
+
 
   const headers = {
     'x-date': xDate,
