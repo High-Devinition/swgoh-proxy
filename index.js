@@ -7,18 +7,19 @@ const port = process.env.PORT || 3000;
 const SECRET_KEY = process.env.SECRET_KEY;
 
 app.get('/data', async (req, res) => {
-  const xDate = Math.floor(Date.now() / 1000).toString(); // ✔️ Unix timestamp (in seconds)
+  const xDate = Math.floor(Date.now() / 1000).toString();
   const signature = crypto.createHmac('sha256', SECRET_KEY).update(xDate).digest('hex');
 
+
   console.log("Sending headers:", {
-    'x-date': xDate,
+    'x-date': xDate.trim(),
     'Authorization': signature
   });
 
   try {
     const response = await axios.get('https://swgoh-comlink-0zch.onrender.com/data', {
       headers: {
-        'x-date': xDate,
+        'x-date': xDate.trim(),
         'Authorization': signature,
         'Accept': 'application/json',
         'User-Agent': 'swgoh-proxy-bot'
