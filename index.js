@@ -1,7 +1,6 @@
 const express = require('express');
 const crypto = require('crypto');
-const axios = require('axios');
-
+const fetch = require('node-fetch'); // <-- new
 const app = express();
 const port = process.env.PORT || 3000;
 const SECRET_KEY = process.env.SECRET_KEY;
@@ -12,7 +11,7 @@ if (!SECRET_KEY) {
 }
 
 app.get('/data', async (req, res) => {
-  const xDate = Date.now().toString(); // Millisecond Unix timestamp
+  const xDate = Date.now().toString();
   const signature = crypto
     .createHmac('sha256', SECRET_KEY)
     .update(xDate)
@@ -24,16 +23,23 @@ app.get('/data', async (req, res) => {
   console.log("  Authorization:", authHeader);
 
   try {
-    const response = await axios.get('https://swgoh-comlink-0zch.onrender.com/data', {
-      headers: Object.fromEntries([
-        ['x-date', xDate],
-        ['Authorization', authHeader],
-        ['Accept', 'application/json'],
-        ['User-Agent', 'swgoh-proxy-bot']
-      ])
+    const response = await fetch('https://swgoh-comlink-0zch.onrender.com/data', {
+      method: 'GET',
+      headers: {
+        'x-date': xDate,
+        'Authorization': authHeader,
+        'Accept': 'application/json',
+        'User-Agent': 'swgoh-proxy-bot'
+      }
     });
 
-    res.status(response.status).json(response.data);
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw { response: { status: response.status, data } };
+    }
+
+    res.status(response.status).json(data);
   } catch (error) {
     console.error("❌ Proxy request failed:");
     console.error("Status:", error.response?.status);
@@ -48,5 +54,5 @@ app.get('/data', async (req, res) => {
 });
 
 app.listen(port, () => {
-  console.log(`✅ Proxy using corrected x-date is running on port ${port}`);
+  console.log(`✅ Proxy using preserved header casing is running on port ${port}`);
 });
