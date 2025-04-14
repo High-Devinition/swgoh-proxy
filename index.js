@@ -1,3 +1,11 @@
+const express = require('express');
+const crypto = require('crypto');
+const axios = require('axios');
+
+const app = express();
+const port = process.env.PORT || 3000;
+const SECRET_KEY = process.env.SECRET_KEY;
+
 app.get('/data', async (req, res) => {
   const xDate = Math.floor(Date.now() / 1000);
   const signature = crypto.createHmac('sha256', SECRET_KEY).update(xDate.toString()).digest('hex');
@@ -17,7 +25,7 @@ app.get('/data', async (req, res) => {
       }
     });
 
-    res.json(response.data); // ✅ this line is inside the try now
+    res.json(response.data);
   } catch (error) {
     console.error("Proxy request failed:");
     console.error("Status:", error.response?.status);
@@ -29,4 +37,8 @@ app.get('/data', async (req, res) => {
       data: error.response?.data || null
     });
   }
+});
+
+app.listen(port, () => {
+  console.log(`Proxy listening on port ${port}`);
 });
