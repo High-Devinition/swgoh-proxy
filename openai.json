@@ -1,0 +1,33 @@
+{
+  "openapi": "3.0.0",
+  "info": {
+    "title": "SWGOH Proxy API",
+    "version": "1.0.0",
+    "description": "A proxy API for SWGOH stats that injects required headers."
+  },
+  "servers": [
+    {
+      "url": "https://swgoh-proxy.onrender.com"
+    }
+  ],
+  "paths": {
+    "/data": {
+      "get": {
+        "summary": "Get SWGOH data",
+        "operationId": "getData",
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
