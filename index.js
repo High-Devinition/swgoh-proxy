@@ -1,6 +1,6 @@
 const express = require('express');
 const crypto = require('crypto');
-const axios = require('axios');
+const https = require('https');
 
 const app = express();
 const port = process.env.PORT || 3000;
@@ -11,40 +11,43 @@ if (!SECRET_KEY) {
   process.exit(1);
 }
 
-app.get('/data', async (req, res) => {
+app.get('/data', (req, res) => {
   const unixEpoch = Math.floor(Date.now() / 1000);
   const signature = crypto
     .createHmac('sha256', SECRET_KEY)
     .update(unixEpoch.toString())
     .digest('hex');
 
-  const xDateHeader = Number(unixEpoch); // ✅ This is the real fix
+  console.log("🔍 Headers going out:");
+  console.log("x-date:", unixEpoch);
+  console.log("Authorization:", signature);
 
-  console.log("🧠 Outgoing headers:");
-  console.log("  x-date:", xDateHeader);
-  console.log("  Authorization:", signature);
+  const options = {
+    hostname: 'swgoh-comlink-0zch.onrender.com',
+    path: '/data',
+    method: 'GET',
+    headers: {
+      'x-date': unixEpoch, // raw number format
+      'Authorization': signature,
+      'Accept': 'application/json',
+      'User-Agent': 'swgoh-proxy-bot/1.0'
+    }
+  };
 
-  try {
-    const response = await axios.get('https://swgoh-comlink-0zch.onrender.com/data', {
-      headers: {
-        'x-date': xDateHeader, // ✅ sent as actual number
-        Authorization: signature,
-        Accept: 'application/json',
-        'User-Agent': 'swgoh-proxy-bot/1.0'
-      }
+  const request = https.request(options, (response) => {
+    let data = '';
+    response.on('data', chunk => data += chunk);
+    response.on('end', () => {
+      res.status(response.statusCode).send(data);
     });
+  });
 
-    res.status(response.status).json(response.data);
-  } catch (error) {
-    console.error("❌ Proxy request failed:");
-    console.error("Status:", error.response?.status);
-    console.error("Message:", error.message);
-    console.error("Data:", error.response?.data || '[no data]');
-    res.status(error.response?.status || 500).json({
-      error: error.message,
-      backend: error.response?.data || null
-    });
-  }
+  request.on('error', (err) => {
+    console.error('❌ Request error:', err);
+    res.status(500).json({ error: err.message });
+  });
+
+  request.end();
 });
 
 app.listen(port, () => {
