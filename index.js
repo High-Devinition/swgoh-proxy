@@ -12,20 +12,22 @@ if (!SECRET_KEY) {
 }
 
 app.get('/data', async (req, res) => {
-  const unixEpoch = Math.floor(Date.now() / 1000); // ✅ number only
+  const unixEpoch = Math.floor(Date.now() / 1000);
   const signature = crypto
     .createHmac('sha256', SECRET_KEY)
-    .update(unixEpoch.toString()) // Must always sign a string!
+    .update(unixEpoch.toString())
     .digest('hex');
 
+  const xDateHeader = Number(unixEpoch); // ✅ This is the real fix
+
   console.log("🧠 Outgoing headers:");
-  console.log("  x-date:", unixEpoch);
+  console.log("  x-date:", xDateHeader);
   console.log("  Authorization:", signature);
 
   try {
     const response = await axios.get('https://swgoh-comlink-0zch.onrender.com/data', {
       headers: {
-        'x-date': unixEpoch, // ✅ sent as number
+        'x-date': xDateHeader, // ✅ sent as actual number
         Authorization: signature,
         Accept: 'application/json',
         'User-Agent': 'swgoh-proxy-bot/1.0'
