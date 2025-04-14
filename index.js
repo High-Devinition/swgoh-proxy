@@ -1,7 +1,5 @@
 const express = require('express');
 const crypto = require('crypto');
-const axios = require('axios');
-const http = require('http');
 const https = require('https');
 
 const app = express();
@@ -15,10 +13,7 @@ if (!SECRET_KEY) {
 
 app.get('/data', async (req, res) => {
   const xDate = Date.now().toString();
-  const signature = crypto
-    .createHmac('sha256', SECRET_KEY)
-    .update(xDate)
-    .digest('hex');
+  const signature = crypto.createHmac('sha256', SECRET_KEY).update(xDate).digest('hex');
 
   const headers = {
     'x-date': xDate,
@@ -27,35 +22,44 @@ app.get('/data', async (req, res) => {
     'User-Agent': 'swgoh-proxy-bot'
   };
 
-  console.log("🧠 Outgoing headers:", headers);
+  console.log("🔎 Outgoing headers:", headers);
 
-  try {
-    const response = await axios.get('https://swgoh-comlink-0zch.onrender.com/data', {
-      headers,
-      httpAgent: new http.Agent({ keepAlive: true }),
-      httpsAgent: new https.Agent({ keepAlive: true }),
-      transformRequest: [(data, headers) => {
-        // Manually preserve casing
-        headers['x-date'] = xDate;
-        headers['Authorization'] = `hmac ${signature}`;
-        return data;
-      }]
+  const options = {
+    hostname: 'swgoh-comlink-0zch.onrender.com',
+    path: '/data',
+    method: 'GET',
+    headers
+  };
+
+  const proxyReq = https.request(options, (proxyRes) => {
+    let body = '';
+    proxyRes.on('data', chunk => body += chunk);
+    proxyRes.on('end', () => {
+      try {
+        const json = JSON.parse(body);
+        if (proxyRes.statusCode >= 400) {
+          throw { response: { status: proxyRes.statusCode, data: json } };
+        }
+        res.status(proxyRes.statusCode).json(json);
+      } catch (err) {
+        console.error("❌ Failed parsing or proxy error:");
+        console.error(err);
+        res.status(err.response?.status || 500).json({
+          error: err.message || 'Unknown error',
+          backend: err.response?.data || null
+        });
+      }
     });
+  });
 
-    res.status(response.status).json(response.data);
-  } catch (error) {
-    console.error("❌ Proxy request failed:");
-    console.error("Status:", error.response?.status);
-    console.error("Message:", error.message);
-    console.error("Data:", error.response?.data || '[no data]');
+  proxyReq.on('error', err => {
+    console.error("❌ Request error:", err);
+    res.status(500).json({ error: err.message });
+  });
 
-    res.status(error.response?.status || 500).json({
-      error: error.message,
-      backend: error.response?.data || null
-    });
-  }
+  proxyReq.end();
 });
 
 app.listen(port, () => {
-  console.log(`✅ Proxy with exact header casing is running on port ${port}`);
+  console.log(`✅ Proxy using raw HTTPS request is running on port ${port}`);
 });
