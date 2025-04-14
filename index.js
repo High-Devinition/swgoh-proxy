@@ -13,27 +13,30 @@ if (!SECRET_KEY) {
 
 app.get('/data', async (req, res) => {
   const xDate = Date.now().toString();
-  const signature = crypto
+
+  const hmacSignature = crypto
     .createHmac('sha256', SECRET_KEY)
     .update(xDate)
     .digest('hex');
 
-  // ✅ Correct Authorization format for comlink: hmac <signature>:<x-date>
-  const authHeader = `hmac ${signature}:${xDate}`;
+  const authHeader = `hmac ${hmacSignature}:${xDate}`;
 
-  const headers = {
-    'x-date': xDate,
-    'Authorization': authHeader,
-    'Accept': 'application/json',
-    'User-Agent': 'swgoh-proxy-bot'
-  };
-
-  console.log("🔍 Outgoing headers:", headers);
+  console.log("🔍 Outgoing headers: {");
+  console.log("  'x-date':", `'${xDate}',`);
+  console.log("  Authorization:", `'${authHeader}',`);
+  console.log("  Accept: 'application/json',");
+  console.log("  'User-Agent': 'swgoh-proxy-bot'");
+  console.log("}");
 
   try {
     const response = await fetch('https://swgoh-comlink-0zch.onrender.com/data', {
       method: 'GET',
-      headers
+      headers: {
+        'x-date': xDate,
+        'Authorization': authHeader,
+        'Accept': 'application/json',
+        'User-Agent': 'swgoh-proxy-bot'
+      }
     });
 
     const data = await response.json();
