@@ -1,5 +1,5 @@
 {
-  "openapi": "3.0.0",
+  "openapi": "3.1.0",
   "info": {
     "title": "SWGOH Proxy API",
     "version": "1.0.0",
@@ -13,15 +13,56 @@
   "paths": {
     "/data": {
       "get": {
-        "summary": "Get SWGOH data",
-        "operationId": "getData",
+        "summary": "Get Lord Vader base stats",
+        "operationId": "getVaderStats",
         "responses": {
           "200": {
-            "description": "Successful response",
+            "description": "Successful response with base stats",
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object"
+                  "type": "object",
+                  "properties": {
+                    "name": {
+                      "type": "string",
+                      "example": "Lord Vader"
+                    },
+                    "power": {
+                      "type": "integer",
+                      "example": 23678
+                    },
+                    "speed": {
+                      "type": "integer",
+                      "example": 150
+                    },
+                    "health": {
+                      "type": "integer",
+                      "example": 62345
+                    },
+                    "protection": {
+                      "type": "integer",
+                      "example": 40123
+                    },
+                    "offense": {
+                      "type": "integer",
+                      "example": 5211
+                    },
+                    "defense": {
+                      "type": "integer",
+                      "example": 189
+                    },
+                    "critical_chance": {
+                      "type": "number",
+                      "format": "float",
+                      "example": 0.32
+                    },
+                    "potency": {
+                      "type": "number",
+                      "format": "float",
+                      "example": 0.75
+                    }
+                  },
+                  "required": ["name", "power", "speed"]
                 }
               }
             }
