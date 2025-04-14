@@ -14,24 +14,31 @@ if (!SECRET_KEY) {
 app.get('/data', async (req, res) => {
   const xDate = Date.now().toString();
 
-  const hmacSignature = crypto
+  const signature = crypto
     .createHmac('sha256', SECRET_KEY)
     .update(xDate)
     .digest('hex');
 
-  const authHeader = `hmac ${hmacSignature}:${xDate}`;
+  // ✅ Proper format for Authorization header
+  const authHeader = `hmac ${signature}:${xDate}`;
 
-  const headers = {
+  console.log("🔍 Outgoing headers:", {
     'x-date': xDate,
     'Authorization': authHeader,
     'Accept': 'application/json',
     'User-Agent': 'swgoh-proxy-bot'
-  };
-
-  console.log("🔍 Outgoing headers:", headers);
+  });
 
   try {
-    const response = await axios.get('https://swgoh-comlink-0zch.onrender.com/data', { headers });
+    const response = await axios.get('https://swgoh-comlink-0zch.onrender.com/data', {
+      headers: {
+        'x-date': xDate,
+        'Authorization': authHeader,
+        'Accept': 'application/json',
+        'User-Agent': 'swgoh-proxy-bot'
+      }
+    });
+
     res.status(response.status).json(response.data);
   } catch (error) {
     console.error("❌ Proxy request failed:");
@@ -47,5 +54,5 @@ app.get('/data', async (req, res) => {
 });
 
 app.listen(port, () => {
-  console.log(`✅ Proxy using preserved header casing is running on port ${port}`);
+  console.log(`✅ Proxy using correct Authorization header is running on port ${port}`);
 });
