@@ -27,7 +27,7 @@ app.get('/data', async (req, res) => {
 
   const headers = {
     'x-date': xDate,
-    'Authorization': authHeader,
+    'authorization': authHeader,
     'Accept': 'application/json',
     'User-Agent': 'swgoh-proxy-bot'
   };
