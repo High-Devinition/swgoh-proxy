@@ -14,7 +14,9 @@ app.get('/data', async (req, res) => {
     const response = await axios.get('https://swgoh-comlink-0zch.onrender.com/data', {
       headers: {
         'x-date': xDate,
-        'Authorization': signature
+        'Authorization': signature,
+        'Accept': 'application/json',
+        'User-Agent': 'swgoh-proxy-bot'
       }
     });
 
