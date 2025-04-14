@@ -12,24 +12,26 @@ if (!SECRET_KEY) {
 }
 
 app.get('/data', async (req, res) => {
-  // ✅ Use milliseconds, as required by comlink-js and Comlink server
+  // ✅ Use milliseconds since epoch
   const xDate = Date.now().toString();
 
-  // 🔐 Generate HMAC signature
+  // 🔐 Create HMAC signature and add required "hmac " prefix
   const signature = crypto
     .createHmac('sha256', SECRET_KEY)
     .update(xDate)
     .digest('hex');
 
+  const authHeader = `hmac ${signature}`;
+
   console.log("🧠 Outgoing headers:");
   console.log("  x-date:", xDate);
-  console.log("  Authorization:", signature);
+  console.log("  Authorization:", authHeader);
 
   try {
     const response = await axios.get('https://swgoh-comlink-0zch.onrender.com/data', {
       headers: {
         'x-date': xDate,
-        'Authorization': signature,
+        'Authorization': authHeader,
         'Accept': 'application/json',
         'User-Agent': 'swgoh-proxy-bot'
       }
