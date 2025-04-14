@@ -12,31 +12,30 @@ if (!SECRET_KEY) {
 }
 
 app.get('/data', async (req, res) => {
+  // Use milliseconds since epoch
   const xDate = Date.now().toString();
 
-  const signature = crypto
+  // HMAC digest from the xDate
+  const digest = crypto
     .createHmac('sha256', SECRET_KEY)
     .update(xDate)
     .digest('hex');
 
-  // ✅ Proper format for Authorization header
-  const authHeader = `hmac ${signature}:${xDate}`;
+  // Format exactly: 'hmac <digest>:<timestamp>'
+  const authHeader = `hmac ${digest}:${xDate}`;
 
-  console.log("🔍 Outgoing headers:", {
+  const headers = {
     'x-date': xDate,
     'Authorization': authHeader,
     'Accept': 'application/json',
     'User-Agent': 'swgoh-proxy-bot'
-  });
+  };
+
+  console.log("🔍 Outgoing headers:", headers);
 
   try {
     const response = await axios.get('https://swgoh-comlink-0zch.onrender.com/data', {
-      headers: {
-        'x-date': xDate,
-        'Authorization': authHeader,
-        'Accept': 'application/json',
-        'User-Agent': 'swgoh-proxy-bot'
-      }
+      headers
     });
 
     res.status(response.status).json(response.data);
@@ -54,5 +53,5 @@ app.get('/data', async (req, res) => {
 });
 
 app.listen(port, () => {
-  console.log(`✅ Proxy using correct Authorization header is running on port ${port}`);
+  console.log(`✅ Proxy with exact header casing is running on port ${port}`);
 });
