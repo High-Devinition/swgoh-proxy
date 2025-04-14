@@ -1,6 +1,7 @@
 const express = require('express');
 const crypto = require('crypto');
-const fetch = require('node-fetch'); // node-fetch v2
+const fetch = require('node-fetch');
+
 const app = express();
 const port = process.env.PORT || 3000;
 const SECRET_KEY = process.env.SECRET_KEY;
@@ -10,26 +11,25 @@ if (!SECRET_KEY) {
   process.exit(1);
 }
 
-// Optional: Clean up headers
-app.set('x-powered-by', false);
-
 app.get('/data', async (req, res) => {
-  const xDate = Date.now().toString(); // Use milliseconds
+  const xDate = Date.now().toString();
   const signature = crypto
     .createHmac('sha256', SECRET_KEY)
     .update(xDate)
     .digest('hex');
+  const authHeader = `hmac ${signature}`;
 
-  const authHeader = `hmac ${signature}`; // ✅ Correct format
-
-  const headers = {
+  const headers = new fetch.Headers({
     'x-date': xDate,
-    'Authorization': authHeader, // ✅ Capital "A"
+    'Authorization': authHeader,
     'Accept': 'application/json',
     'User-Agent': 'swgoh-proxy-bot'
-  };
+  });
 
-  console.log("🧠 Outgoing headers:", headers);
+  console.log("🧠 Outgoing headers:", {
+    'x-date': xDate,
+    'Authorization': authHeader
+  });
 
   try {
     const response = await fetch('https://swgoh-comlink-0zch.onrender.com/data', {
