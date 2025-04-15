@@ -17,10 +17,12 @@ app.get('/data', async (req, res) => {
   const reqTime = Date.now().toString(); // ✅ milliseconds since epoch
   const method = 'GET';
   const uri = '/data';
-  const body = ''; // ✅ GET requests have no body
+
+  // ✅ GET body treated as '{}' per GAS wrapper behavior
+  const body = JSON.stringify({});
   const bodyMD5 = crypto.createHash('md5').update(body).digest('hex');
 
-  // ✅ Match spreadsheet logic exactly: timestamp + method + uri + bodyMD5
+  // ✅ Signature format: timestamp + method + uri + bodyMD5
   const toSign = reqTime + method + uri + bodyMD5;
   const signature = crypto.createHmac('sha256', SECRET_KEY).update(toSign).digest('hex');
 
@@ -33,16 +35,19 @@ app.get('/data', async (req, res) => {
     'User-Agent': 'swgoh-proxy-bot'
   };
 
-  // 🧪 Debug logs
-  console.log("🧠 Signing values:");
-  console.log("  Timestamp:", reqTime);
-  console.log("  Method:", method);
-  console.log("  URI:", uri);
-  console.log("  Body MD5:", bodyMD5);
-  console.log("  ToSign:", toSign);
-  console.log("  Signature:", signature);
-  console.log("  Final Authorization:", authHeader);
-  console.log("🔍 Outgoing headers:", headers);
+  // 🧠 Debug logging
+  console.log("\n=== 🧠 Signature Debug ===");
+  console.log("ACCESS_KEY:", ACCESS_KEY);
+  console.log("Timestamp (x-date):", reqTime);
+  console.log("Method:", method);
+  console.log("URI:", uri);
+  console.log("Body (raw):", body);
+  console.log("Body MD5:", bodyMD5);
+  console.log("String to Sign:", toSign);
+  console.log("Signature:", signature);
+  console.log("Authorization Header:", authHeader);
+  console.log("Headers:", headers);
+  console.log("==========================\n");
 
   try {
     const response = await axios.get('https://swgoh-comlink-0zch.onrender.com/data', {
@@ -64,5 +69,5 @@ app.get('/data', async (req, res) => {
 });
 
 app.listen(port, () => {
-  console.log(`✅ Proxy with spreadsheet-exact signature logic is running on port ${port}`);
+  console.log(`✅ Proxy with exact spreadsheet-matching signature logic is running on port ${port}`);
 });
