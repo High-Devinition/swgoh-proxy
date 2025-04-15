@@ -15,8 +15,8 @@ if (!ACCESS_KEY || !SECRET_KEY) {
 
 app.get('/data', async (req, res) => {
 
-// Use milliseconds since epoch
-const reqTime = Date.now().toString();
+// Use seconds since epoch
+const reqTime = Math.floor(Date.now() / 1000).toString(); // epoch time in seconds
 const method = 'GET';
 const uri = '/data';
 
