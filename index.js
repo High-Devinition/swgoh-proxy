@@ -1,6 +1,6 @@
 const express = require('express');
 const crypto = require('crypto');
-const http2 = require('http2');
+const axios = require('axios');
 
 const app = express();
 const port = process.env.PORT || 10000;
@@ -14,60 +14,47 @@ if (!ACCESS_KEY || !SECRET_KEY) {
 }
 
 app.get('/data', async (req, res) => {
-  // ✅ Use milliseconds since epoch
-  const reqTime = Date.now().toString(); // <-- this is critical!
+  const reqTime = Date.now().toString(); // milliseconds since epoch
   const method = 'GET';
   const uri = '/data';
 
-  // ✅ HMAC digest using individual updates
+  // HMAC signature generation
   const hmac = crypto.createHmac('sha256', SECRET_KEY);
-  hmac.update(String(method));
-  hmac.update(String(uri));
-  hmac.update(String(reqTime));
+  hmac.update(method);
+  hmac.update(uri);
+  hmac.update(reqTime);
   const signature = hmac.digest('hex');
 
-  // ✅ Proper Authorization header format
   const authHeader = `HMAC-SHA256 Credential=${ACCESS_KEY},Signature=${signature}`;
 
   const headers = {
-    ':method': method,
-    ':path': uri,
-    'x-date': reqTime, // <-- lowercase "x-date" is critical!
-    'Authorization': authHeader,
+    'x-date': reqTime,
+    'Authorization': authHeader, // case preserved!
     'Accept': 'application/json',
     'User-Agent': 'swgoh-proxy-bot'
   };
 
   console.log("🔍 Outgoing headers:", headers);
 
-  const client = http2.connect('https://swgoh-comlink-0zch.onrender.com');
+  try {
+    const response = await axios.get('https://swgoh-comlink-0zch.onrender.com/data', {
+      headers
+    });
 
-  const request = client.request(headers);
+    res.status(response.status).json(response.data);
+  } catch (error) {
+    console.error("❌ Proxy request failed:");
+    console.error("Status:", error.response?.status);
+    console.error("Message:", error.message);
+    console.error("Data:", error.response?.data || '[no data]');
 
-  let responseData = '';
-  request.setEncoding('utf8');
-  request.on('data', chunk => responseData += chunk);
-
-  request.on('end', () => {
-    try {
-      const json = JSON.parse(responseData);
-      res.status(200).json(json);
-    } catch (e) {
-      console.error("❌ Parse error:", e);
-      res.status(500).json({ error: "Parse error", raw: responseData });
-    }
-    client.close();
-  });
-
-  request.on('error', err => {
-    console.error("❌ HTTP2 error:", err.message);
-    res.status(500).json({ error: err.message });
-    client.close();
-  });
-
-  request.end();
+    res.status(error.response?.status || 500).json({
+      error: error.message,
+      backend: error.response?.data || null
+    });
+  }
 });
 
 app.listen(port, () => {
-  console.log(`✅ HTTP/2 proxy running on port ${port}`);
+  console.log(`✅ Proxy using axios is running on port ${port}`);
 });
