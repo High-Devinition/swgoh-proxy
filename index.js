@@ -14,43 +14,39 @@ if (!ACCESS_KEY || !SECRET_KEY) {
 }
 
 app.get('/data', async (req, res) => {
-  const reqTime = Date.now().toString(); // ✅ milliseconds since epoch
-  const method = 'GET';
-  const uri = '/data';
+  const timestamp = Date.now().toString();           // ✅ ms since epoch
+  const method = 'POST';                             // ✅ use POST
+  const endpoint = '/data';                          // ✅ use lowercase path
+  const payload = {};                                // ✅ pretend empty JSON body
 
-  // ✅ GET body treated as '{}' per GAS wrapper behavior
-  const body = JSON.stringify({});
-  const bodyMD5 = crypto.createHash('md5').update(body).digest('hex');
+  const payloadString = JSON.stringify(payload);     // stringified body
+  const bodyMD5 = crypto.createHash('md5').update(payloadString).digest('hex');
 
-  // ✅ Signature format: timestamp + method + uri + bodyMD5
-  const toSign = reqTime + method + uri + bodyMD5;
+  const toSign = timestamp + method + endpoint.toLowerCase() + bodyMD5;
   const signature = crypto.createHmac('sha256', SECRET_KEY).update(toSign).digest('hex');
-
   const authHeader = `HMAC-SHA256 Credential=${ACCESS_KEY},Signature=${signature}`;
 
   const headers = {
-    'x-date': reqTime,
+    'x-date': timestamp,
     'Authorization': authHeader,
     'Accept': 'application/json',
     'User-Agent': 'swgoh-proxy-bot'
   };
 
-  // 🧠 Debug logging
-  console.log("\n=== 🧠 Signature Debug ===");
-  console.log("ACCESS_KEY:", ACCESS_KEY);
-  console.log("Timestamp (x-date):", reqTime);
-  console.log("Method:", method);
-  console.log("URI:", uri);
-  console.log("Body (raw):", body);
-  console.log("Body MD5:", bodyMD5);
-  console.log("String to Sign:", toSign);
-  console.log("Signature:", signature);
-  console.log("Authorization Header:", authHeader);
-  console.log("Headers:", headers);
-  console.log("==========================\n");
+  // 🧪 Debug
+  console.log("🧠 HMAC Signature Debug");
+  console.log("  Timestamp:", timestamp);
+  console.log("  Method:", method);
+  console.log("  Endpoint:", endpoint.toLowerCase());
+  console.log("  Payload:", payloadString);
+  console.log("  MD5:", bodyMD5);
+  console.log("  ToSign:", toSign);
+  console.log("  Signature:", signature);
+  console.log("  Final Header:", authHeader);
+  console.log("  Outgoing headers:", headers);
 
   try {
-    const response = await axios.get('https://swgoh-comlink-0zch.onrender.com/data', {
+    const response = await axios.post('https://swgoh-comlink-0zch.onrender.com/data', payload, {
       headers
     });
 
@@ -60,7 +56,7 @@ app.get('/data', async (req, res) => {
     console.error("Status:", error.response?.status);
     console.error("Message:", error.message);
     console.error("Data:", error.response?.data || '[no data]');
-
+    
     res.status(error.response?.status || 500).json({
       error: error.message,
       backend: error.response?.data || null
@@ -69,5 +65,5 @@ app.get('/data', async (req, res) => {
 });
 
 app.listen(port, () => {
-  console.log(`✅ Proxy with exact spreadsheet-matching signature logic is running on port ${port}`);
+  console.log(`✅ POST-mode proxy using Mhanndalorian-style HMAC is running on port ${port}`);
 });
