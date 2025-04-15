@@ -15,13 +15,14 @@ if (!ACCESS_KEY || !SECRET_KEY) {
 
 app.get('/data', async (req, res) => {
   const reqTime = Date.now().toString();
-  const method = "GET";
-  const uri = "/data";
+  const method = 'GET';
+  const uri = '/data';
 
-  // ✨ Match Comlink's expected HMAC input format exactly
-  const payload = `${reqTime}${method}${uri}`;
+  // IMPORTANT: update in correct order
   const hmac = crypto.createHmac('sha256', SECRET_KEY);
-  hmac.update(payload);
+  hmac.update(method);
+  hmac.update(uri);
+  hmac.update(reqTime);
   const signature = hmac.digest('hex');
 
   const authHeader = `HMAC-SHA256 Credential=${ACCESS_KEY},Signature=${signature}`;
@@ -43,23 +44,21 @@ app.get('/data', async (req, res) => {
 
   let responseData = '';
   request.setEncoding('utf8');
-  request.on('data', chunk => {
-    responseData += chunk;
-  });
+  request.on('data', chunk => responseData += chunk);
 
   request.on('end', () => {
     try {
       const json = JSON.parse(responseData);
       res.status(200).json(json);
     } catch (e) {
-      console.error("❌ Failed parsing response:", e);
-      res.status(500).json({ error: "Failed to parse response", raw: responseData });
+      console.error("❌ Parse error:", e);
+      res.status(500).json({ error: "Parse error", raw: responseData });
     }
     client.close();
   });
 
-  request.on('error', (err) => {
-    console.error("❌ HTTP2 request error:", err.message);
+  request.on('error', err => {
+    console.error("❌ HTTP2 error:", err.message);
     res.status(500).json({ error: err.message });
     client.close();
   });
