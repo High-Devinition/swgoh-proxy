@@ -21,9 +21,9 @@ app.get('/data', async (req, res) => {
 
   // ✅ HMAC digest using individual updates
   const hmac = crypto.createHmac('sha256', SECRET_KEY);
-  hmac.update(method);
-  hmac.update(uri);
-  hmac.update(reqTime);
+  hmac.update(String(method));
+  hmac.update(String(uri));
+  hmac.update(String(reqTime));
   const signature = hmac.digest('hex');
 
   // ✅ Proper Authorization header format
