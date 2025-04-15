@@ -14,74 +14,65 @@ if (!ACCESS_KEY || !SECRET_KEY) {
 }
 
 app.get('/data', async (req, res) => {
-  const timestamp = Math.floor(Date.now() / 1000).toString();  // ✅ epoch seconds
+  const timestamp = Math.floor(Date.now()).toString(); // Milliseconds
   const method = 'GET';
   const uri = '/data';
+  const payload = '';
+  const md5 = crypto.createHash('md5').update(payload).digest('hex');
 
-  const bodyHash = crypto.createHash('md5').update('').digest('hex');  // ✅ md5 of empty string
-  const toSign = timestamp + method + uri + bodyHash;
-
-  const signature = crypto
-    .createHmac('sha256', SECRET_KEY)
-    .update(toSign)
-    .digest('hex');
-
+  const stringToSign = `${timestamp}${method}${uri}${md5}`;
+  const signature = crypto.createHmac('sha256', SECRET_KEY).update(stringToSign).digest('hex');
   const authHeader = `HMAC-SHA256 Credential=${ACCESS_KEY},Signature=${signature}`;
 
   const headers = {
-    'x-date': timestamp,                 // ✅ lowercased, epoch seconds
+    'x-date': timestamp,
     'Authorization': authHeader,
     'Accept': 'application/json',
     'User-Agent': 'swgoh-proxy-bot'
   };
 
-  // 💡 Debug
-  console.log("\n🧠 Final Jedi GET Debug:");
+  console.log("🧠 Final Jedi GET Debug:");
   console.log("  x-date:", timestamp);
   console.log("  Method:", method);
   console.log("  URI:", uri);
-  console.log("  Body MD5:", bodyHash);
-  console.log("  String to Sign:", toSign);
+  console.log("  Body MD5:", md5);
+  console.log("  String to Sign:", stringToSign);
   console.log("  Signature:", signature);
   console.log("  Auth Header:", authHeader);
   console.log("  Outgoing Headers:", headers);
 
-  try {
-    const client = http2.connect('https://swgoh-comlink-0zch.onrender.com');
+  const client = http2.connect('https://swgoh-comlink-0zch.onrender.com');
 
-    const request = client.request({
-      ':method': method,
-      ':path': uri,
-      ...headers
-    });
+  const request = client.request({
+    ':method': method,
+    ':path': uri,
+    ...headers
+  });
 
-    let responseData = '';
-    request.setEncoding('utf8');
-    request.on('data', chunk => responseData += chunk);
-    request.on('end', () => {
-      try {
-        const json = JSON.parse(responseData);
-        res.status(200).json(json);
-      } catch (err) {
-        console.error("❌ Parse error:", err);
-        res.status(500).json({ error: "Parse error", raw: responseData });
-      }
-      client.close();
-    });
+  let responseData = '';
+  request.setEncoding('utf8');
+  request.on('data', chunk => responseData += chunk);
 
-    request.on('error', err => {
-      console.error("❌ HTTP2 error:", err.message);
-      res.status(500).json({ error: err.message });
-      client.close();
-    });
+  request.on('end', () => {
+    try {
+      const json = JSON.parse(responseData);
+      res.status(200).json(json);
+    } catch (err) {
+      console.error("❌ Parse error:", err);
+      res.status(500).json({ error: "Parse error", raw: responseData });
+    }
+    client.close();
+  });
 
-    request.end();
-  } catch (err) {
-    console.error("❌ Unexpected error:", err.message);
+  request.on('error', err => {
+    console.error("❌ HTTP2 error:", err.message);
     res.status(500).json({ error: err.message });
-  }
+    client.close();
+  });
+
+  request.end();
 });
 
 app.listen(port, () => {
-  console.log(`✅ Jedi Proxy is listening on port ${port}`);
+  console.log(`✅ HTTP/2 proxy running on port ${port}`);
 });
