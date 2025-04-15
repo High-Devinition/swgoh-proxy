@@ -14,26 +14,25 @@ if (!ACCESS_KEY || !SECRET_KEY) {
 }
 
 app.get('/data', async (req, res) => {
+  // ✅ Use milliseconds since epoch
+  const reqTime = Date.now().toString(); // <-- this is critical!
+  const method = 'GET';
+  const uri = '/data';
 
-// Use miliseconds since epoch
-const reqTime = Date.now().toString();
-const method = 'GET';
-const uri = '/data';
+  // ✅ HMAC digest using individual updates
+  const hmac = crypto.createHmac('sha256', SECRET_KEY);
+  hmac.update(method);
+  hmac.update(uri);
+  hmac.update(reqTime);
+  const signature = hmac.digest('hex');
 
-// Proper HMAC digest format: method + uri + timestamp
-const hmac = crypto.createHmac('sha256', SECRET_KEY);
-hmac.update(method);
-hmac.update(uri);
-hmac.update(reqTime);
-const signature = hmac.digest('hex');
-
-// Final Authorization header (Comlink expects this format)
-const authHeader = `HMAC-SHA256 Credential=${ACCESS_KEY},Signature=${signature}`;
+  // ✅ Proper Authorization header format
+  const authHeader = `HMAC-SHA256 Credential=${ACCESS_KEY},Signature=${signature}`;
 
   const headers = {
     ':method': method,
     ':path': uri,
-    'x-date': reqTime,
+    'x-date': reqTime, // <-- lowercase "x-date" is critical!
     'Authorization': authHeader,
     'Accept': 'application/json',
     'User-Agent': 'swgoh-proxy-bot'
