@@ -18,30 +18,37 @@ app.get('/data', async (req, res) => {
   const method = 'GET';
   const uri = '/data';
 
-  // HMAC signature generation
+  // 🧠 Match spreadsheet HMAC: time + method + uri + md5(body)
+  const emptyBodyHash = crypto
+    .createHash('md5')
+    .update(JSON.stringify({})) // empty POST body
+    .digest('hex');
+
   const hmac = crypto.createHmac('sha256', SECRET_KEY);
+  hmac.update(reqTime);
   hmac.update(method);
   hmac.update(uri);
-  hmac.update(reqTime);
+  hmac.update(emptyBodyHash);
   const signature = hmac.digest('hex');
 
   const authHeader = `HMAC-SHA256 Credential=${ACCESS_KEY},Signature=${signature}`;
 
   const headers = {
     'x-date': reqTime,
-    'Authorization': authHeader, // case preserved!
+    'Authorization': authHeader,
     'Accept': 'application/json',
     'User-Agent': 'swgoh-proxy-bot'
   };
 
-  // 🧠 DEBUG LOGGING
-console.log("🧠 Signing values:");
-console.log("  Method:", method);
-console.log("  URI:", uri);
-console.log("  Timestamp:", reqTime);
-console.log("  Signature:", signature);
-console.log("  Final Authorization:", authHeader);
-console.log("🔍 Outgoing headers:", headers);
+  // 🧪 Debug logs
+  console.log("🧠 Signing values:");
+  console.log("  Timestamp:", reqTime);
+  console.log("  Method:", method);
+  console.log("  URI:", uri);
+  console.log("  MD5 Body:", emptyBodyHash);
+  console.log("  Signature:", signature);
+  console.log("  Final Authorization:", authHeader);
+  console.log("🔍 Outgoing headers:", headers);
 
   try {
     const response = await axios.get('https://swgoh-comlink-0zch.onrender.com/data', {
@@ -63,5 +70,5 @@ console.log("🔍 Outgoing headers:", headers);
 });
 
 app.listen(port, () => {
-  console.log(`✅ Proxy using axios is running on port ${port}`);
+  console.log(`✅ Proxy using spreadsheet-style signature is running on port ${port}`);
 });
