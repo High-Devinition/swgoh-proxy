@@ -14,18 +14,19 @@ if (!ACCESS_KEY || !SECRET_KEY) {
 }
 
 app.get('/data', async (req, res) => {
-  const reqTime = Date.now().toString();
-  const method = 'GET';
-  const uri = '/data';
 
-  // IMPORTANT: update in correct order
-  const hmac = crypto.createHmac('sha256', SECRET_KEY);
-  hmac.update(method);
-  hmac.update(uri);
-  hmac.update(reqTime);
-  const signature = hmac.digest('hex');
+// Use milliseconds since epoch
+const reqTime = Date.now().toString();
+const method = 'GET';
+const uri = '/data';
 
-  const authHeader = `HMAC-SHA256 Credential=${ACCESS_KEY},Signature=${signature}`;
+// Proper HMAC digest format: method + uri + timestamp
+const hmac = crypto.createHmac('sha256', SECRET_KEY);
+hmac.update(method + uri + reqTime);
+const signature = hmac.digest('hex');
+
+// Final Authorization header (Comlink expects this format)
+const authHeader = `HMAC-SHA256 Credential=${ACCESS_KEY},Signature=${signature}`;
 
   const headers = {
     ':method': method,
