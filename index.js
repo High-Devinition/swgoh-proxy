@@ -22,7 +22,9 @@ const uri = '/data';
 
 // Proper HMAC digest format: method + uri + timestamp
 const hmac = crypto.createHmac('sha256', SECRET_KEY);
-hmac.update(method + uri + reqTime);
+hmac.update(method);
+hmac.update(uri);
+hmac.update(reqTime);
 const signature = hmac.digest('hex');
 
 // Final Authorization header (Comlink expects this format)
