@@ -14,22 +14,15 @@ if (!ACCESS_KEY || !SECRET_KEY) {
 }
 
 app.get('/data', async (req, res) => {
-  const reqTime = Date.now().toString(); // milliseconds since epoch
+  const reqTime = Date.now().toString(); // ✅ milliseconds since epoch
   const method = 'GET';
   const uri = '/data';
+  const body = ''; // ✅ GET requests have no body
+  const bodyMD5 = crypto.createHash('md5').update(body).digest('hex');
 
-  // 🧠 Match spreadsheet HMAC: time + method + uri + md5(body)
-  const emptyBodyHash = crypto
-    .createHash('md5')
-    .update(JSON.stringify({})) // empty POST body
-    .digest('hex');
-
-  const hmac = crypto.createHmac('sha256', SECRET_KEY);
-  hmac.update(reqTime);
-  hmac.update(method);
-  hmac.update(uri);
-  hmac.update(emptyBodyHash);
-  const signature = hmac.digest('hex');
+  // ✅ Match spreadsheet logic exactly: timestamp + method + uri + bodyMD5
+  const toSign = reqTime + method + uri + bodyMD5;
+  const signature = crypto.createHmac('sha256', SECRET_KEY).update(toSign).digest('hex');
 
   const authHeader = `HMAC-SHA256 Credential=${ACCESS_KEY},Signature=${signature}`;
 
@@ -45,7 +38,8 @@ app.get('/data', async (req, res) => {
   console.log("  Timestamp:", reqTime);
   console.log("  Method:", method);
   console.log("  URI:", uri);
-  console.log("  MD5 Body:", emptyBodyHash);
+  console.log("  Body MD5:", bodyMD5);
+  console.log("  ToSign:", toSign);
   console.log("  Signature:", signature);
   console.log("  Final Authorization:", authHeader);
   console.log("🔍 Outgoing headers:", headers);
@@ -70,5 +64,5 @@ app.get('/data', async (req, res) => {
 });
 
 app.listen(port, () => {
-  console.log(`✅ Proxy using spreadsheet-style signature is running on port ${port}`);
+  console.log(`✅ Proxy with spreadsheet-exact signature logic is running on port ${port}`);
 });
