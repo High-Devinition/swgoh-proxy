@@ -34,7 +34,14 @@ app.get('/data', async (req, res) => {
     'User-Agent': 'swgoh-proxy-bot'
   };
 
-  console.log("🔍 Outgoing headers:", headers);
+  // 🧠 DEBUG LOGGING
+console.log("🧠 Signing values:");
+console.log("  Method:", method);
+console.log("  URI:", uri);
+console.log("  Timestamp:", reqTime);
+console.log("  Signature:", signature);
+console.log("  Final Authorization:", authHeader);
+console.log("🔍 Outgoing headers:", headers);
 
   try {
     const response = await axios.get('https://swgoh-comlink-0zch.onrender.com/data', {
