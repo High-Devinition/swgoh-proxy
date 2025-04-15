@@ -23,14 +23,14 @@ app.get('/data', async (req, res) => {
 
   const client = http2.connect('https://swgoh-comlink-0zch.onrender.com');
 
-  const headers = {
-    ':method': 'GET',
-    ':path': '/data',
-    'x-date': xDate,
-    'Authorization': authHeader,
-    'Accept': 'application/json',
-    'User-Agent': 'swgoh-proxy-bot'
-  };
+ const headers = {
+  ':method': 'GET',
+  ':path': '/data',
+  'x-date': xDate,
+  'authorization': authHeader, // 👈 lowercase 'authorization'
+  'Accept': 'application/json',
+  'User-Agent': 'swgoh-proxy-bot'
+};
 
   console.log('🔍 Outgoing headers:', headers);
 
