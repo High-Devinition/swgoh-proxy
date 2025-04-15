@@ -14,25 +14,31 @@ if (!ACCESS_KEY || !SECRET_KEY) {
 }
 
 app.get('/data', async (req, res) => {
-  const timestamp = Math.floor(Date.now() / 1000).toString(); // ✅ Correct: epoch seconds!
+  const timestamp = Date.now().toString(); // ✅ EPOCH IN MILLISECONDS
+
   const method = 'GET';
   const uri = '/data';
   const payload = '';
   const md5 = crypto.createHash('md5').update(payload).digest('hex');
 
   const stringToSign = `${timestamp}${method}${uri}${md5}`;
-  const signature = crypto.createHmac('sha256', SECRET_KEY).update(stringToSign).digest('hex');
+  const signature = crypto
+    .createHmac('sha256', SECRET_KEY)
+    .update(stringToSign)
+    .digest('hex');
+
   const authHeader = `HMAC-SHA256 Credential=${ACCESS_KEY},Signature=${signature}`;
 
   const headers = {
-    'x-date': timestamp,
+    'x-date': timestamp, // ✅ lowercase + milliseconds
     'Authorization': authHeader,
     'Accept': 'application/json',
     'User-Agent': 'swgoh-proxy-bot'
   };
 
-  console.log("🧠 Final Jedi GET Debug:");
-  console.log("  x-date (epoch seconds):", timestamp);
+  // 🔍 Debug Output
+  console.log("\n🧠 Final Jedi GET Debug:");
+  console.log("  x-date (ms):", timestamp);
   console.log("  Method:", method);
   console.log("  URI:", uri);
   console.log("  Body MD5:", md5);
