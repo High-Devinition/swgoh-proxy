@@ -31,7 +31,7 @@ const authHeader = `HMAC-SHA256 Credential=${ACCESS_KEY},Signature=${signature}`
   const headers = {
     ':method': method,
     ':path': uri,
-    'X-Date': reqTime,
+    'x-Date': reqTime,
     'Authorization': authHeader,
     'Accept': 'application/json',
     'User-Agent': 'swgoh-proxy-bot'
