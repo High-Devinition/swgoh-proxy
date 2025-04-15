@@ -22,7 +22,7 @@ app.get('/data', async (req, res) => {
     .digest('hex');
 
   // Format exactly: 'hmac <digest>:<timestamp>'
-  const authHeader = `hmac ${signature}:${xDate}`;
+  const authHeader = `hmac ${digest}:${xDate}`;
 
 
 
