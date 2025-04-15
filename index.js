@@ -1,6 +1,6 @@
 const express = require('express');
 const crypto = require('crypto');
-const axios = require('axios');
+const https = require('https');
 
 const app = express();
 const port = process.env.PORT || 3000;
@@ -12,49 +12,52 @@ if (!SECRET_KEY) {
 }
 
 app.get('/data', async (req, res) => {
-  // Use milliseconds since epoch
   const xDate = Date.now().toString();
 
-  // HMAC digest from the xDate
   const digest = crypto
     .createHmac('sha256', SECRET_KEY)
     .update(xDate)
     .digest('hex');
 
-  // Format exactly: 'hmac <digest>:<timestamp>'
   const authHeader = `hmac ${digest}:${xDate}`;
 
+  const options = {
+    hostname: 'swgoh-comlink-0zch.onrender.com',
+    path: '/data',
+    method: 'GET',
+    headers: {
+      'x-date': xDate,
+      'Authorization': authHeader, // ✅ preserve exact casing
+      'Accept': 'application/json',
+      'User-Agent': 'swgoh-proxy-bot'
+    }
+  };
 
+  console.log("🔍 Outgoing headers:", options.headers);
 
-  const headers = {
-  'x-date': xDate,
-  'Authorization': authHeader,  // 🫡 Capital A here
-  'Accept': 'application/json',
-  'User-Agent': 'swgoh-proxy-bot'
-};
-
-
-  console.log("🔍 Outgoing headers:", headers);
-
-  try {
-    const response = await axios.get('https://swgoh-comlink-0zch.onrender.com/data', {
-      headers
+  const request = https.request(options, (response) => {
+    let data = '';
+    response.on('data', chunk => data += chunk);
+    response.on('end', () => {
+      try {
+        const json = JSON.parse(data);
+        res.status(response.statusCode).json(json);
+      } catch (parseErr) {
+        console.error("❌ Failed to parse response:", parseErr);
+        res.status(500).json({ error: "Invalid JSON response", raw: data });
+      }
     });
+  });
 
-    res.status(response.status).json(response.data);
-  } catch (error) {
+  request.on('error', (err) => {
     console.error("❌ Proxy request failed:");
-    console.error("Status:", error.response?.status);
-    console.error("Message:", error.message);
-    console.error("Data:", error.response?.data || '[no data]');
+    console.error("Message:", err.message);
+    res.status(500).json({ error: err.message });
+  });
 
-    res.status(error.response?.status || 500).json({
-      error: error.message,
-      backend: error.response?.data || null
-    });
-  }
+  request.end();
 });
 
 app.listen(port, () => {
-  console.log(`✅ Proxy with exact header casing is running on port ${port}`);
+  console.log(`✅ Proxy with preserved header casing is running on port ${port}`);
 });
