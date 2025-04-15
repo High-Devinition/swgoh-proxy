@@ -27,11 +27,12 @@ app.get('/data', async (req, res) => {
 
 
   const headers = {
-    'x-date': xDate,
-    'authorization': authHeader,
-    'Accept': 'application/json',
-    'User-Agent': 'swgoh-proxy-bot'
-  };
+  'x-date': xDate,
+  'Authorization': authHeader,  // 🫡 Capital A here
+  'Accept': 'application/json',
+  'User-Agent': 'swgoh-proxy-bot'
+};
+
 
   console.log("🔍 Outgoing headers:", headers);
 
