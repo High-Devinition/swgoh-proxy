@@ -18,18 +18,18 @@ app.get('/data', async (req, res) => {
   const method = "GET";
   const uri = "/data";
 
+  // ✨ Match Comlink's expected HMAC input format exactly
+  const payload = `${reqTime}${method}${uri}`;
   const hmac = crypto.createHmac('sha256', SECRET_KEY);
-  hmac.update(reqTime);
-  hmac.update(method);
-  hmac.update(uri);
+  hmac.update(payload);
   const signature = hmac.digest('hex');
 
   const authHeader = `HMAC-SHA256 Credential=${ACCESS_KEY},Signature=${signature}`;
 
   const headers = {
-    ':method': 'GET',
+    ':method': method,
     ':path': uri,
-    'x-date': reqTime,
+    'X-Date': reqTime,
     'Authorization': authHeader,
     'Accept': 'application/json',
     'User-Agent': 'swgoh-proxy-bot'
@@ -43,8 +43,7 @@ app.get('/data', async (req, res) => {
 
   let responseData = '';
   request.setEncoding('utf8');
-
-  request.on('data', (chunk) => {
+  request.on('data', chunk => {
     responseData += chunk;
   });
 
