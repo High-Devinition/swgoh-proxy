@@ -1,10 +1,9 @@
 const express = require('express');
 const crypto = require('crypto');
-const axios = require('axios');
-const http = require('http'); // Force HTTP/1.1
+const http2 = require('http2');
 
 const app = express();
-const port = process.env.PORT || 3000;
+const port = process.env.PORT || 10000;
 const SECRET_KEY = process.env.SECRET_KEY;
 
 if (!SECRET_KEY) {
@@ -21,38 +20,52 @@ app.get('/data', async (req, res) => {
     .update(xDate)
     .digest('hex');
 
-  // Format exactly: 'hmac <digest>:<timestamp>'
-  const authHeader = `hmac ${digest}:${xDate}`;
+  // Format as: HMAC <digest>:<timestamp>
+  const authHeader = `HMAC ${digest}:${xDate}`;
 
+  // Prepare headers with exact casing
   const headers = {
+    ':method': 'GET',
+    ':path': '/data',
     'x-date': xDate,
-    'Authorization': authHeader, // Capital A
+    'Authorization': authHeader, // Capital A!
     'Accept': 'application/json',
     'User-Agent': 'swgoh-proxy-bot'
   };
 
   console.log("🔍 Outgoing headers:", headers);
 
-  try {
-    const response = await axios.get('https://swgoh-comlink-0zch.onrender.com/data', {
-      headers
-    });
+  const client = http2.connect('https://swgoh-comlink-0zch.onrender.com');
 
-    res.status(response.status).json(response.data);
-  } catch (error) {
-    console.error("❌ Proxy request failed:");
-    console.error("Status:", error.response?.status);
-    console.error("Message:", error.message);
-    console.error("Data:", error.response?.data || '[no data]');
+  const request = client.request(headers);
 
-    res.status(error.response?.status || 500).json({
-      error: error.message,
-      backend: error.response?.data || null
-    });
-  }
+  let rawData = '';
+  request.setEncoding('utf8');
+
+  request.on('data', (chunk) => {
+    rawData += chunk;
+  });
+
+  request.on('end', () => {
+    try {
+      const json = JSON.parse(rawData);
+      res.status(200).json(json);
+    } catch (e) {
+      console.error("❌ Failed parsing or proxy error:");
+      console.error("Response:", rawData);
+      res.status(502).json({ error: 'Failed to parse response', raw: rawData });
+    }
+    client.close();
+  });
+
+  request.on('error', (err) => {
+    console.error("❌ Proxy request failed:", err);
+    res.status(500).json({ error: err.message });
+  });
+
+  request.end();
 });
 
-// 🔁 Force HTTP/1.1 to preserve header casing
-http.createServer(app).listen(port, () => {
-  console.log(`✅ HTTP/1.1 proxy running on port ${port}`);
+app.listen(port, () => {
+  console.log(`✅ HTTP2 proxy running on port ${port}`);
 });
