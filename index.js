@@ -14,35 +14,36 @@ if (!ACCESS_KEY || !SECRET_KEY) {
 }
 
 app.get('/data', async (req, res) => {
-  const timestamp = Math.floor(Date.now() / 1000).toString();  // ✅ seconds-based epoch
+  const timestamp = Date.now().toString();  // ✅ back to epoch milliseconds
   const method = 'POST';
   const uri = '/data';
-  const payload = {};  // ✅ consistent with POST structure
+  const payload = {};
   const payloadString = JSON.stringify(payload);
   const bodyHash = crypto.createHash('md5').update(payloadString).digest('hex');
 
+  // Construct string to sign
   const toSign = timestamp + method + uri + bodyHash;
   const signature = crypto.createHmac('sha256', SECRET_KEY).update(toSign).digest('hex');
   const authHeader = `HMAC-SHA256 Credential=${ACCESS_KEY},Signature=${signature}`;
 
   const headers = {
-    'x-date': timestamp, // ✅ finally correct
+    'X-Date': timestamp,   // ✅ uppercased header casing
     'Authorization': authHeader,
     'Accept': 'application/json',
     'User-Agent': 'swgoh-proxy-bot'
   };
 
-  // 🧠 Debug log
+  // Debug
   console.log("\n🧠 HMAC Signature Debug");
-  console.log("  x-date (epoch seconds):", timestamp);
+  console.log("  X-Date (ms):", timestamp);
   console.log("  Method:", method);
   console.log("  URI:", uri);
   console.log("  Payload:", payloadString);
   console.log("  Body MD5:", bodyHash);
-  console.log("  String to Sign:", toSign);
+  console.log("  ToSign:", toSign);
   console.log("  Signature:", signature);
-  console.log("  Authorization:", authHeader);
-  console.log("  Headers:", headers);
+  console.log("  Auth Header:", authHeader);
+  console.log("  Outgoing Headers:", headers);
 
   try {
     const response = await axios.post('https://swgoh-comlink-0zch.onrender.com/data', payload, {
@@ -64,5 +65,5 @@ app.get('/data', async (req, res) => {
 });
 
 app.listen(port, () => {
-  console.log(`✅ Final Comlink proxy running on port ${port}`);
+  console.log(`✅ Proxy with uppercase X-Date + ms timestamp running on port ${port}`);
 });
