@@ -1,6 +1,6 @@
 const express = require('express');
 const crypto = require('crypto');
-const http2 = require('http2');
+const { request } = require('undici');
 
 const app = express();
 const port = process.env.PORT || 10000;
@@ -14,58 +14,46 @@ if (!SECRET_KEY) {
 app.get('/data', async (req, res) => {
   const xDate = Date.now().toString();
 
-  // Generate HMAC digest
   const digest = crypto
     .createHmac('sha256', SECRET_KEY)
     .update(xDate)
     .digest('hex');
 
-  // Format as: HMAC <digest>:<timestamp>
   const authHeader = `HMAC ${digest}:${xDate}`;
 
-  // Prepare headers with exact casing
   const headers = {
-    ':method': 'GET',
-    ':path': '/data',
     'x-date': xDate,
-    'Authorization': authHeader, // Capital A!
+    'Authorization': authHeader, // 👈 Capital A, now respected by undici
     'Accept': 'application/json',
     'User-Agent': 'swgoh-proxy-bot'
   };
 
   console.log("🔍 Outgoing headers:", headers);
 
-  const client = http2.connect('https://swgoh-comlink-0zch.onrender.com');
+  try {
+    const { body, statusCode } = await request('https://swgoh-comlink-0zch.onrender.com/data', {
+      method: 'GET',
+      headers
+    });
 
-  const request = client.request(headers);
+    const raw = await body.text();
+    let data;
 
-  let rawData = '';
-  request.setEncoding('utf8');
-
-  request.on('data', (chunk) => {
-    rawData += chunk;
-  });
-
-  request.on('end', () => {
     try {
-      const json = JSON.parse(rawData);
-      res.status(200).json(json);
-    } catch (e) {
-      console.error("❌ Failed parsing or proxy error:");
-      console.error("Response:", rawData);
-      res.status(502).json({ error: 'Failed to parse response', raw: rawData });
+      data = JSON.parse(raw);
+    } catch (err) {
+      return res.status(502).json({ error: 'Invalid JSON from Comlink', raw });
     }
-    client.close();
-  });
 
-  request.on('error', (err) => {
-    console.error("❌ Proxy request failed:", err);
-    res.status(500).json({ error: err.message });
-  });
-
-  request.end();
+    res.status(statusCode).json(data);
+  } catch (error) {
+    console.error("❌ Proxy request failed:", error);
+    res.status(500).json({
+      error: error.message || 'Request failed'
+    });
+  }
 });
 
 app.listen(port, () => {
-  console.log(`✅ HTTP2 proxy running on port ${port}`);
+  console.log(`🚀 Proxy using undici is running on port ${port}`);
 });
