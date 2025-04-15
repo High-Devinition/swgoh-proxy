@@ -14,7 +14,7 @@ if (!ACCESS_KEY || !SECRET_KEY) {
 }
 
 app.get('/data', async (req, res) => {
-  const timestamp = Math.floor(Date.now()).toString(); // Milliseconds
+  const timestamp = Math.floor(Date.now() / 1000).toString(); // ✅ Correct: epoch seconds!
   const method = 'GET';
   const uri = '/data';
   const payload = '';
@@ -32,7 +32,7 @@ app.get('/data', async (req, res) => {
   };
 
   console.log("🧠 Final Jedi GET Debug:");
-  console.log("  x-date:", timestamp);
+  console.log("  x-date (epoch seconds):", timestamp);
   console.log("  Method:", method);
   console.log("  URI:", uri);
   console.log("  Body MD5:", md5);
