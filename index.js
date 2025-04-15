@@ -14,7 +14,7 @@ if (!ACCESS_KEY || !SECRET_KEY) {
 }
 
 app.get('/data', async (req, res) => {
-  const timestamp = Date.now().toString();           // ✅ ms since epoch
+  const timestamp = Math.floor(Date.now() / 1000).toString();
   const method = 'POST';                             // ✅ use POST
   const endpoint = '/data';                          // ✅ use lowercase path
   const payload = {};                                // ✅ pretend empty JSON body
