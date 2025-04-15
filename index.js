@@ -1,6 +1,6 @@
 const express = require('express');
 const crypto = require('crypto');
-const axios = require('axios');
+const http2 = require('http2');
 
 const app = express();
 const port = process.env.PORT || 10000;
@@ -14,56 +14,74 @@ if (!ACCESS_KEY || !SECRET_KEY) {
 }
 
 app.get('/data', async (req, res) => {
-  const timestamp = Date.now().toString();  // ✅ back to epoch milliseconds
-  const method = 'POST';
+  const timestamp = Math.floor(Date.now() / 1000).toString();  // ✅ epoch seconds
+  const method = 'GET';
   const uri = '/data';
-  const payload = {};
-  const payloadString = JSON.stringify(payload);
-  const bodyHash = crypto.createHash('md5').update(payloadString).digest('hex');
 
-  // Construct string to sign
+  const bodyHash = crypto.createHash('md5').update('').digest('hex');  // ✅ md5 of empty string
   const toSign = timestamp + method + uri + bodyHash;
-  const signature = crypto.createHmac('sha256', SECRET_KEY).update(toSign).digest('hex');
+
+  const signature = crypto
+    .createHmac('sha256', SECRET_KEY)
+    .update(toSign)
+    .digest('hex');
+
   const authHeader = `HMAC-SHA256 Credential=${ACCESS_KEY},Signature=${signature}`;
 
   const headers = {
-    'X-Date': timestamp,   // ✅ uppercased header casing
+    'x-date': timestamp,                 // ✅ lowercased, epoch seconds
     'Authorization': authHeader,
     'Accept': 'application/json',
     'User-Agent': 'swgoh-proxy-bot'
   };
 
-  // Debug
-  console.log("\n🧠 HMAC Signature Debug");
-  console.log("  X-Date (ms):", timestamp);
+  // 💡 Debug
+  console.log("\n🧠 Final Jedi GET Debug:");
+  console.log("  x-date:", timestamp);
   console.log("  Method:", method);
   console.log("  URI:", uri);
-  console.log("  Payload:", payloadString);
   console.log("  Body MD5:", bodyHash);
-  console.log("  ToSign:", toSign);
+  console.log("  String to Sign:", toSign);
   console.log("  Signature:", signature);
   console.log("  Auth Header:", authHeader);
   console.log("  Outgoing Headers:", headers);
 
   try {
-    const response = await axios.post('https://swgoh-comlink-0zch.onrender.com/data', payload, {
-      headers
+    const client = http2.connect('https://swgoh-comlink-0zch.onrender.com');
+
+    const request = client.request({
+      ':method': method,
+      ':path': uri,
+      ...headers
     });
 
-    res.status(response.status).json(response.data);
-  } catch (error) {
-    console.error("❌ Proxy request failed:");
-    console.error("Status:", error.response?.status);
-    console.error("Message:", error.message);
-    console.error("Data:", error.response?.data || '[no data]');
-
-    res.status(error.response?.status || 500).json({
-      error: error.message,
-      backend: error.response?.data || null
+    let responseData = '';
+    request.setEncoding('utf8');
+    request.on('data', chunk => responseData += chunk);
+    request.on('end', () => {
+      try {
+        const json = JSON.parse(responseData);
+        res.status(200).json(json);
+      } catch (err) {
+        console.error("❌ Parse error:", err);
+        res.status(500).json({ error: "Parse error", raw: responseData });
+      }
+      client.close();
     });
+
+    request.on('error', err => {
+      console.error("❌ HTTP2 error:", err.message);
+      res.status(500).json({ error: err.message });
+      client.close();
+    });
+
+    request.end();
+  } catch (err) {
+    console.error("❌ Unexpected error:", err.message);
+    res.status(500).json({ error: err.message });
   }
 });
 
 app.listen(port, () => {
-  console.log(`✅ Proxy with uppercase X-Date + ms timestamp running on port ${port}`);
+  console.log(`✅ Jedi Proxy is listening on port ${port}`);
 });
