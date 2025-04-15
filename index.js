@@ -14,36 +14,37 @@ if (!ACCESS_KEY || !SECRET_KEY) {
 }
 
 app.get('/data', async (req, res) => {
-  const timestamp = Math.floor(Date.now() / 1000).toString();
-  const method = 'POST';                             // ✅ use POST
-  const endpoint = '/data';                          // ✅ use lowercase path
-  const payload = {};                                // ✅ pretend empty JSON body
+  const timestamp = new Date().toUTCString();         // ✅ RFC 1123 format
+  const method = 'POST';
+  const uri = '/data';
+  const payload = {};                                 // ✅ still valid for POST
 
-  const payloadString = JSON.stringify(payload);     // stringified body
-  const bodyMD5 = crypto.createHash('md5').update(payloadString).digest('hex');
+  const payloadString = JSON.stringify(payload);
+  const bodyHash = crypto.createHash('md5').update(payloadString).digest('hex');
 
-  const toSign = timestamp + method + endpoint.toLowerCase() + bodyMD5;
+  // ✅ Sign: x-date + method + path + body hash
+  const toSign = timestamp + method + uri + bodyHash;
   const signature = crypto.createHmac('sha256', SECRET_KEY).update(toSign).digest('hex');
+
   const authHeader = `HMAC-SHA256 Credential=${ACCESS_KEY},Signature=${signature}`;
 
   const headers = {
-    'x-date': timestamp,
+    'x-date': timestamp,             // ✅ final correct format
     'Authorization': authHeader,
     'Accept': 'application/json',
     'User-Agent': 'swgoh-proxy-bot'
   };
 
-  // 🧪 Debug
-  console.log("🧠 HMAC Signature Debug");
-  console.log("  Timestamp:", timestamp);
+  console.log("\n🧠 HMAC Signature Debug");
+  console.log("  x-date (UTC):", timestamp);
   console.log("  Method:", method);
-  console.log("  Endpoint:", endpoint.toLowerCase());
+  console.log("  URI:", uri);
   console.log("  Payload:", payloadString);
-  console.log("  MD5:", bodyMD5);
-  console.log("  ToSign:", toSign);
+  console.log("  Body MD5:", bodyHash);
+  console.log("  String to Sign:", toSign);
   console.log("  Signature:", signature);
-  console.log("  Final Header:", authHeader);
-  console.log("  Outgoing headers:", headers);
+  console.log("  Final Authorization:", authHeader);
+  console.log("  Outgoing Headers:", headers);
 
   try {
     const response = await axios.post('https://swgoh-comlink-0zch.onrender.com/data', payload, {
@@ -56,7 +57,7 @@ app.get('/data', async (req, res) => {
     console.error("Status:", error.response?.status);
     console.error("Message:", error.message);
     console.error("Data:", error.response?.data || '[no data]');
-    
+
     res.status(error.response?.status || 500).json({
       error: error.message,
       backend: error.response?.data || null
@@ -65,5 +66,5 @@ app.get('/data', async (req, res) => {
 });
 
 app.listen(port, () => {
-  console.log(`✅ POST-mode proxy using Mhanndalorian-style HMAC is running on port ${port}`);
+  console.log(`✅ Proxy with proper x-date and signature is running on port ${port}`);
 });
